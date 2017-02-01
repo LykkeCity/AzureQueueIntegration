@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Autofac;
 using Common;
 using Common.Log;
 using Microsoft.WindowsAzure.Storage;
@@ -14,7 +15,7 @@ namespace Lykke.AzureQueueIntegration.Subscriber
         TModel Deserialize(string data);
     }
 
-    public class AzureQueueSubscriber<TModel> : IStarter, IMessageConsumer<TModel>
+    public class AzureQueueSubscriber<TModel> : IStartable, IMessageConsumer<TModel>
     {
         private readonly string _applicationName;
         private readonly AzureQueueSettings _settings;
@@ -101,7 +102,7 @@ namespace Lykke.AzureQueueIntegration.Subscriber
             return this;
         }
 
-        void IStarter.Start()
+        void IStartable.Start()
         {
             Start();
         }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Autofac;
 using Common;
 using Common.Log;
 using Microsoft.WindowsAzure.Storage;
@@ -13,7 +14,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
         string Serialize(TModel model);
     }
 
-    public class AzureQueuePublisher<TModel> : IStarter, IMessageProducer<TModel>
+    public class AzureQueuePublisher<TModel> : IStartable, IMessageProducer<TModel>
     {
         private readonly string _applicationName;
         private readonly AzureQueueSettings _settings;
@@ -102,7 +103,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             return this;
         }
 
-        void IStarter.Start()
+        void IStartable.Start()
         {
             Start();
         }
