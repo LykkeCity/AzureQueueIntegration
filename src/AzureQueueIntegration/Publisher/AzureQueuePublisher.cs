@@ -5,7 +5,7 @@ using Common.Log;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
-namespace AzureQueueIntegration.Publisher
+namespace Lykke.AzureQueueIntegration.Publisher
 {
 
     public interface IAzureQueueSerializer<in TModel>

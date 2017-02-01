@@ -6,7 +6,7 @@ using Common;
 using Common.Log;
 using Microsoft.WindowsAzure.Storage;
 
-namespace AzureQueueIntegration.Subscriber
+namespace Lykke.AzureQueueIntegration.Subscriber
 {
 
     public interface IAzureQueueMessageDeserializer<out TModel>

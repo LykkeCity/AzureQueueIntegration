@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace AzureQueueIntegration
+namespace Lykke.AzureQueueIntegration
 {
 
     public class QueueWithConfirmation<T>
