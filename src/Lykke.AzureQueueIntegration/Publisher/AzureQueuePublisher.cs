@@ -31,13 +31,13 @@ namespace Lykke.AzureQueueIntegration.Publisher
 
         #region Config
 
-        private AzureQueuePublisher<TModel> SetLogger(ILog log)
+        public AzureQueuePublisher<TModel> SetLogger(ILog log)
         {
             _log = log;
             return this;
         }
 
-        private AzureQueuePublisher<TModel> SetSerializer(IAzureQueueSerializer<TModel> serializer)
+        public AzureQueuePublisher<TModel> SetSerializer(IAzureQueueSerializer<TModel> serializer)
         {
             _serializer = serializer;
             return this;
