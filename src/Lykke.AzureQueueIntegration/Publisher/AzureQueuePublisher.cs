@@ -1,9 +1,6 @@
-﻿using System;
-using System.Threading.Tasks;
-using Autofac;
+﻿using System.Threading.Tasks;
 using Common;
 using Common.Log;
-using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Lykke.AzureQueueIntegration.Publisher
@@ -14,26 +11,23 @@ namespace Lykke.AzureQueueIntegration.Publisher
         string Serialize(TModel model);
     }
 
-    public class AzureQueuePublisher<TModel> : IStartable, IMessageProducer<TModel>
+    public class AzureQueuePublisher<TModel> : TimerPeriod, IMessageProducer<TModel>
     {
-        private readonly string _applicationName;
         private readonly AzureQueueSettings _settings;
-
         private IAzureQueueSerializer<TModel> _serializer;
-        private ILog _log;
 
         public AzureQueuePublisher(string applicationName, AzureQueueSettings settings)
+            : base(applicationName, 1000)
         {
-            _applicationName = applicationName;
             _settings = settings;
             _settings.QueueName = _settings.QueueName.ToLower();
         }
 
         #region Config
 
-        public AzureQueuePublisher<TModel> SetLogger(ILog log)
+        public new AzureQueuePublisher<TModel> SetLogger(ILog log)
         {
-            _log = log;
+            base.SetLogger(log);
             return this;
         }
 
@@ -46,78 +40,31 @@ namespace Lykke.AzureQueueIntegration.Publisher
 
         #endregion
 
+        private CloudQueue _cloudQueue;
 
-        private Task _task;
-
-        private async Task TheTask()
+        public override async Task Execute()
         {
 
-            while (_task != null)
-                try
-                {
-
-                    var storageAccount = CloudStorageAccount.Parse(_settings.ConnectionString);
-                    var queueClient = storageAccount.CreateCloudQueueClient();
-                    var queue = queueClient.GetQueueReference(_settings.QueueName);
-                    await queue.CreateIfNotExistsAsync();
+            if (_cloudQueue == null)
+                _cloudQueue = await _settings.GetQueueAsync();
 
 
-                    while (true)
-                    {
-                        var message = _queue.Dequeue();
-                        if (message == null)
-                        {
-                            if (_task == null)
-                                break;
+            var message = _queue.Dequeue();
+            if (message == null)
+                return;
 
-                            await Task.Delay(1000);
-                            continue;
-                        }
-
-                        var dataToQueue = _serializer.Serialize(message.Item);
-                        await queue.AddMessageAsync(new CloudQueueMessage(dataToQueue));
-                        message.Compliete();
-                    }
-
-                }
-                catch (Exception e)
-                {
-                    await _log.WriteErrorAsync(_applicationName, "TheTask", "", e);
-                }
+            var dataToQueue = _serializer.Serialize(message.Item);
+            await _cloudQueue.AddMessageAsync(new CloudQueueMessage(dataToQueue));
+            message.Compliete();
         }
 
 
-        public AzureQueuePublisher<TModel> Start()
+        public new AzureQueuePublisher<TModel> Start()
         {
-            if (_task != null)
-                return this;
-
-            if (_log == null)
-                throw new Exception("ILog required for: "+_applicationName);
-
-            if (_serializer == null)
-                throw new Exception("IAzureQueueSerializer required for: " + _applicationName);
-
-            _task = TheTask();
-
+            base.Start();
             return this;
         }
 
-        void IStartable.Start()
-        {
-            Start();
-        }
-
-
-        public void Stop()
-        {
-            if (_task == null)
-                return;
-
-            var task = _task;
-            _task = null;
-            task.Wait();
-        }
 
         private readonly QueueWithConfirmation<TModel> _queue = new QueueWithConfirmation<TModel>();
 
@@ -126,5 +73,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             _queue.Enqueue(message);
             return Task.FromResult(0);
         }
+
     }
+
 }

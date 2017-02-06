@@ -2,10 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Autofac;
 using Common;
 using Common.Log;
-using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Lykke.AzureQueueIntegration.Subscriber
 {
@@ -15,16 +14,14 @@ namespace Lykke.AzureQueueIntegration.Subscriber
         TModel Deserialize(string data);
     }
 
-    public class AzureQueueSubscriber<TModel> : IStartable, IMessageConsumer<TModel>
+    public class AzureQueueSubscriber<TModel> : TimerPeriod, IMessageConsumer<TModel>
     {
-        private readonly string _applicationName;
         private readonly AzureQueueSettings _settings;
         private IAzureQueueMessageDeserializer<TModel> _deserializer;
-        private ILog _log;
 
         public AzureQueueSubscriber(string applicationName, AzureQueueSettings settings)
+            :base(applicationName, 1000)
         {
-            _applicationName = applicationName;
             _settings = settings;
         }
 
@@ -37,84 +34,39 @@ namespace Lykke.AzureQueueIntegration.Subscriber
             return this;
         }
 
-        public AzureQueueSubscriber<TModel> SetLogger(ILog log)
+        public new AzureQueueSubscriber<TModel> SetLogger(ILog log)
         {
-            _log = log;
+            base.SetLogger(log);
             return this;
         }
 
         #endregion
 
-        private Task _task;
-
-        private async Task TheTask()
+        private CloudQueue _cloudQueue;
+        public override async Task Execute()
         {
-            while (_task != null)
-                try
-                {
 
-                    var storageAccount = CloudStorageAccount.Parse(_settings.ConnectionString);
-                    var queueClient = storageAccount.CreateCloudQueueClient();
-                    var queue = queueClient.GetQueueReference(_settings.QueueName);
-                    await queue.CreateIfNotExistsAsync();
+            if (_cloudQueue == null)
+                _cloudQueue = await _settings.GetQueueAsync();
 
-                    while (_task != null)
-                    {
+            var messages = (await _cloudQueue.GetMessagesAsync(31)).ToArray();
 
-
-                        var messages = (await queue.GetMessagesAsync(31)).ToArray();
-
-                        if (messages.Length == 0)
-                            await Task.Delay(1000);
-                        else
-                            foreach (var message in messages)
-                            {
-                                var data = _deserializer.Deserialize(message.AsString);
-                                await Task.WhenAll(_callbacks.Select(itm => itm(data)));
-                                await queue.DeleteMessageAsync(message);
-                            }
-
-                    }
-
-                }
-                catch (Exception e)
-                {
-                    await _log.WriteErrorAsync(_applicationName, "TheTask", "", e);
-                }
-
-        }
-
-
-        public AzureQueueSubscriber<TModel> Start()
-        {
-            if (_task != null)
-                return this;
-
-
-            if (_deserializer == null)
-                throw new Exception("Deserializer required for: "+_applicationName);
-
-            if (_log == null)
-                throw new Exception("ILog required for: " + _applicationName);
-
-            _task = TheTask();
-
-            return this;
-        }
-
-        void IStartable.Start()
-        {
-            Start();
-        }
-
-        public void Stop()
-        {
-            if (_task == null)
+            if (messages.Length == 0)
                 return;
 
-            var task = _task;
-            _task = null;
-            task.Wait();
+            foreach (var message in messages)
+            {
+                var data = _deserializer.Deserialize(message.AsString);
+                await Task.WhenAll(_callbacks.Select(itm => itm(data)));
+                await _cloudQueue.DeleteMessageAsync(message);
+            }
+        }
+
+
+        public new AzureQueueSubscriber<TModel> Start()
+        {
+            base.Start();
+            return this;
         }
 
         private readonly List<Func<TModel, Task>> _callbacks = new List<Func<TModel, Task>>();
@@ -125,4 +77,5 @@ namespace Lykke.AzureQueueIntegration.Subscriber
         }
 
     }
+
 }
