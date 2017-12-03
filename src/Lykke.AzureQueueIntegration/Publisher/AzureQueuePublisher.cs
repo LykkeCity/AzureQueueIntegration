@@ -6,11 +6,6 @@ using Microsoft.WindowsAzure.Storage.Queue;
 namespace Lykke.AzureQueueIntegration.Publisher
 {
 
-    public interface IAzureQueueSerializer<in TModel>
-    {
-        string Serialize(TModel model);
-    }
-
     public class AzureQueuePublisher<TModel> : TimerPeriod, IMessageProducer<TModel>
     {
         private readonly AzureQueueSettings _settings;

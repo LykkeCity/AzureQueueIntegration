@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>1.0.0</Version>
+    <PackageProjectUrl>https://github.com/LykkeCity/AzureQueueIntegration</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/LykkeCity/AzureQueueIntegration.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageIconUrl>https://avatars3.githubusercontent.com/u/14153330?v=3&amp;amp;amp;s=200</PackageIconUrl>
+    <PackageTags>Lykke</PackageTags>
+    <Authors>Lykke</Authors>
+    <Company>Lykke</Company>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Lykke.Common" Version="3.0.2" />
+    <PackageReference Include="WindowsAzure.Storage" Version="8.6.0" />
+  </ItemGroup>
+
+</Project>
