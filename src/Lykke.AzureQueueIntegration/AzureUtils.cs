@@ -14,6 +14,5 @@ namespace Lykke.AzureQueueIntegration
             await queue.CreateIfNotExistsAsync();
             return queue;
         }
-
     }
 }

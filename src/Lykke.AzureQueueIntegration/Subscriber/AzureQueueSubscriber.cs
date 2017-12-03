@@ -8,12 +8,6 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Lykke.AzureQueueIntegration.Subscriber
 {
-
-    public interface IAzureQueueMessageDeserializer<out TModel>
-    {
-        TModel Deserialize(string data);
-    }
-
     public class AzureQueueSubscriber<TModel> : TimerPeriod, IMessageConsumer<TModel>
     {
         private readonly AzureQueueSettings _settings;
@@ -24,8 +18,7 @@ namespace Lykke.AzureQueueIntegration.Subscriber
         {
             _settings = settings;
         }
-
-
+        
         #region Configure
 
         public AzureQueueSubscriber<TModel> SetDeserializer(IAzureQueueMessageDeserializer<TModel> deserializer)
