@@ -39,18 +39,23 @@ namespace Lykke.AzureQueueIntegration.Publisher
 
         public override async Task Execute()
         {
-
             if (_cloudQueue == null)
                 _cloudQueue = await _settings.GetQueueAsync();
 
+            do
+            {
+                var message = _queue.Dequeue();
 
-            var message = _queue.Dequeue();
-            if (message == null)
-                return;
+                if (message == null)
+                {
+                    break;
+                }
 
-            var dataToQueue = _serializer.Serialize(message.Item);
-            await _cloudQueue.AddMessageAsync(new CloudQueueMessage(dataToQueue));
-            message.Compliete();
+                var dataToQueue = _serializer.Serialize(message.Item);
+                await _cloudQueue.AddMessageAsync(new CloudQueueMessage(dataToQueue));
+                message.Compliete();
+
+            } while (true);
         }
 
 
@@ -60,6 +65,12 @@ namespace Lykke.AzureQueueIntegration.Publisher
             return this;
         }
 
+        public override void Stop()
+        {
+            base.Stop();
+
+            Execute().GetAwaiter().GetResult();
+        }
 
         private readonly QueueWithConfirmation<TModel> _queue = new QueueWithConfirmation<TModel>();
 
@@ -68,7 +79,6 @@ namespace Lykke.AzureQueueIntegration.Publisher
             _queue.Enqueue(message);
             return Task.FromResult(0);
         }
-
     }
 
 }
