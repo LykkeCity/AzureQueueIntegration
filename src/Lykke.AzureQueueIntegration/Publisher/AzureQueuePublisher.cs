@@ -5,10 +5,12 @@ using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Lykke.AzureQueueIntegration.Publisher
 {
-
     public class AzureQueuePublisher<TModel> : TimerPeriod, IMessageProducer<TModel>
     {
         private readonly AzureQueueSettings _settings;
+        private readonly QueueWithConfirmation<TModel> _queue = new QueueWithConfirmation<TModel>();
+
+        private CloudQueue _cloudQueue;
         private IAzureQueueSerializer<TModel> _serializer;
 
         public AzureQueuePublisher(string applicationName, AzureQueueSettings settings)
@@ -16,6 +18,21 @@ namespace Lykke.AzureQueueIntegration.Publisher
         {
             _settings = settings;
             _settings.QueueName = _settings.QueueName.ToLower();
+
+            DisableTelemetry();
+        }
+
+        public AzureQueuePublisher(
+            string applicationName,
+            AzureQueueSettings settings,
+            bool disableTelemetry)
+            : base(applicationName, 1000)
+        {
+            _settings = settings;
+            _settings.QueueName = _settings.QueueName.ToLower();
+
+            if (disableTelemetry)
+                DisableTelemetry();
         }
 
         #region Config
@@ -32,10 +49,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             return this;
         }
 
-
         #endregion
-
-        private CloudQueue _cloudQueue;
 
         public override async Task Execute()
         {
@@ -58,7 +72,6 @@ namespace Lykke.AzureQueueIntegration.Publisher
             } while (true);
         }
 
-
         public new AzureQueuePublisher<TModel> Start()
         {
             base.Start();
@@ -72,13 +85,10 @@ namespace Lykke.AzureQueueIntegration.Publisher
             Execute().GetAwaiter().GetResult();
         }
 
-        private readonly QueueWithConfirmation<TModel> _queue = new QueueWithConfirmation<TModel>();
-
         public Task ProduceAsync(TModel message)
         {
             _queue.Enqueue(message);
             return Task.FromResult(0);
         }
     }
-
 }
