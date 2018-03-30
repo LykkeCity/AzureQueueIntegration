@@ -11,14 +11,31 @@ namespace Lykke.AzureQueueIntegration.Subscriber
     public class AzureQueueSubscriber<TModel> : TimerPeriod, IMessageConsumer<TModel>
     {
         private readonly AzureQueueSettings _settings;
+        private readonly List<Func<TModel, Task>> _callbacks = new List<Func<TModel, Task>>();
+
+        private CloudQueue _cloudQueue;
         private IAzureQueueMessageDeserializer<TModel> _deserializer;
 
         public AzureQueueSubscriber(string applicationName, AzureQueueSettings settings)
             :base(applicationName, 1000)
         {
             _settings = settings;
+
+            DisableTelemetry();
         }
-        
+
+        public AzureQueueSubscriber(
+            string applicationName,
+            AzureQueueSettings settings,
+            bool disableTelemetry)
+            : base(applicationName, 1000)
+        {
+            _settings = settings;
+
+            if (disableTelemetry)
+                DisableTelemetry();
+        }
+
         #region Configure
 
         public AzureQueueSubscriber<TModel> SetDeserializer(IAzureQueueMessageDeserializer<TModel> deserializer)
@@ -35,7 +52,6 @@ namespace Lykke.AzureQueueIntegration.Subscriber
 
         #endregion
 
-        private CloudQueue _cloudQueue;
         public override async Task Execute()
         {
 
@@ -55,20 +71,15 @@ namespace Lykke.AzureQueueIntegration.Subscriber
             }
         }
 
-
         public new AzureQueueSubscriber<TModel> Start()
         {
             base.Start();
             return this;
         }
 
-        private readonly List<Func<TModel, Task>> _callbacks = new List<Func<TModel, Task>>();
-
         public void Subscribe(Func<TModel, Task> callback)
         {
             _callbacks.Add(callback);
         }
-
     }
-
 }
