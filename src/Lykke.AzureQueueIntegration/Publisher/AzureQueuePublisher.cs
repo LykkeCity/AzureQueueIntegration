@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Common;
 using Common.Log;
 using Microsoft.WindowsAzure.Storage.Queue;
@@ -56,20 +57,31 @@ namespace Lykke.AzureQueueIntegration.Publisher
             if (_cloudQueue == null)
                 _cloudQueue = await _settings.GetQueueAsync();
 
-            do
+            QueueWithConfirmation<TModel>.QueueItem message = null;
+            try
             {
-                var message = _queue.Dequeue();
-
-                if (message == null)
+                do
                 {
-                    break;
-                }
+                    message = _queue.Dequeue();
 
-                var dataToQueue = _serializer.Serialize(message.Item);
-                await _cloudQueue.AddMessageAsync(new CloudQueueMessage(dataToQueue));
-                message.Compliete();
+                    if (message == null)
+                    {
+                        break;
+                    }
 
-            } while (true);
+                    var dataToQueue = _serializer.Serialize(message.Item);
+                    await _cloudQueue.AddMessageAsync(new CloudQueueMessage(dataToQueue));
+                    message.Compliete();
+                } while (true);
+            }
+            catch (Exception ex)
+            {
+                Log?.WriteError(
+                    $"{GetComponentName()}:{_settings.QueueName}",
+                    message == null || message.Item == null ? string.Empty : message.Item.ToJson(),
+                    ex);
+                throw;
+            }
         }
 
         public new AzureQueuePublisher<TModel> Start()
