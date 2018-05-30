@@ -2,6 +2,8 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Lykke.AzureQueueIntegration.Publisher
@@ -9,11 +11,13 @@ namespace Lykke.AzureQueueIntegration.Publisher
     public class AzureQueuePublisher<TModel> : TimerPeriod, IMessageProducer<TModel>
     {
         private readonly AzureQueueSettings _settings;
+        private readonly ILog _log;
         private readonly QueueWithConfirmation<TModel> _queue = new QueueWithConfirmation<TModel>();
 
         private CloudQueue _cloudQueue;
         private IAzureQueueSerializer<TModel> _serializer;
 
+        [Obsolete("Use ctor with logFactory")]
         public AzureQueuePublisher(string applicationName, AzureQueueSettings settings)
             : base(applicationName, 1000)
         {
@@ -23,6 +27,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             DisableTelemetry();
         }
 
+        [Obsolete("Use ctor with logFactory")]
         public AzureQueuePublisher(
             string applicationName,
             AzureQueueSettings settings,
@@ -36,14 +41,40 @@ namespace Lykke.AzureQueueIntegration.Publisher
                 DisableTelemetry();
         }
 
+        public AzureQueuePublisher(
+            [NotNull] ILogFactory logFactory,
+            [NotNull] IAzureQueueSerializer<TModel> serializer,
+            [NotNull] string publisherName,
+            [NotNull] AzureQueueSettings settings,
+            TimeSpan sendPeriod,
+            bool disableTelemetry = true)
+            
+            : base(sendPeriod, logFactory, publisherName)
+        {
+            _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+            _log = logFactory?.CreateLog(this, publisherName) ?? throw new ArgumentNullException(nameof(logFactory));
+
+            _settings = new AzureQueueSettings
+            {
+                QueueName = _settings.QueueName.ToLower(),
+                ConnectionString = _settings.ConnectionString
+            };
+            
+            if (disableTelemetry)
+                DisableTelemetry();
+        }
+
         #region Config
 
+        [Obsolete("Use ctor to set logFactory")]
         public new AzureQueuePublisher<TModel> SetLogger(ILog log)
         {
             base.SetLogger(log);
             return this;
         }
 
+        [Obsolete("Use ctor to set serializer")]
         public AzureQueuePublisher<TModel> SetSerializer(IAzureQueueSerializer<TModel> serializer)
         {
             _serializer = serializer;
@@ -76,7 +107,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             }
             catch (Exception ex)
             {
-                Log?.WriteError(
+                _log?.WriteError(
                     $"{GetComponentName()}:{_settings.QueueName}",
                     message == null || message.Item == null ? string.Empty : message.Item.ToJson(),
                     ex);
@@ -94,7 +125,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
         {
             base.Stop();
 
-            Execute().GetAwaiter().GetResult();
+            Execute().ConfigureAwait(false).GetAwaiter().GetResult();
         }
 
         public Task ProduceAsync(TModel message)
