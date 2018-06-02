@@ -70,7 +70,8 @@ namespace Lykke.AzureQueueIntegration.Publisher
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-            _log = logFactory?.CreateLog(this, publisherName) ?? throw new ArgumentNullException(nameof(logFactory));
+
+            _log = logFactory.CreateLog(this, publisherName);
 
             _settings = new AzureQueueSettings
             {
