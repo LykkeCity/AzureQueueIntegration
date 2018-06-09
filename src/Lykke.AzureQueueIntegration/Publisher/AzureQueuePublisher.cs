@@ -71,6 +71,11 @@ namespace Lykke.AzureQueueIntegration.Publisher
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _settings = settings ?? throw new ArgumentNullException(nameof(settings));
 
+            if (string.IsNullOrWhiteSpace(settings.QueueName))
+            {
+                throw new InvalidOperationException("Queue name should be not empty");
+            }
+
             _log = logFactory.CreateLog(this, publisherName);
 
             _settings = new AzureQueueSettings
@@ -79,7 +84,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
                 ConnectionString = _settings.ConnectionString
             };
 
-            _cloudQueue = _settings.GetQueueAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            _cloudQueue = _settings.GetQueueAsync().GetAwaiter().GetResult();
 
             if (disableTelemetry)
             {
