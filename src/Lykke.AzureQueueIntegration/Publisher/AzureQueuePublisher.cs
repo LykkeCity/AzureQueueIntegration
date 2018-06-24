@@ -28,7 +28,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             _settings = settings;
             _settings.QueueName = _settings.QueueName.ToLower();
 
-            _cloudQueue = _settings.GetQueueAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            _cloudQueue = _settings.GetQueueAsync().GetAwaiter().GetResult();
 
             DisableTelemetry();
         }
@@ -43,7 +43,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             _settings = settings;
             _settings.QueueName = _settings.QueueName.ToLower();
 
-            _cloudQueue = _settings.GetQueueAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            _cloudQueue = _settings.GetQueueAsync().GetAwaiter().GetResult();
 
             if (disableTelemetry)
                 DisableTelemetry();
