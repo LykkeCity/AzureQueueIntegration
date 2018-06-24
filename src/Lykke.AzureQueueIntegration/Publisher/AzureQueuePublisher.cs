@@ -149,7 +149,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
         {
             base.Stop();
 
-            Execute().ConfigureAwait(false).GetAwaiter().GetResult();
+            Execute().GetAwaiter().GetResult();
         }
 
         public Task ProduceAsync(TModel message)
