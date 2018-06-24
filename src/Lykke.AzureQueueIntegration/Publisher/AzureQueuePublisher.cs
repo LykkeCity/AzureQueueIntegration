@@ -2,27 +2,38 @@
 using System.Threading.Tasks;
 using Common;
 using Common.Log;
+using JetBrains.Annotations;
+using Lykke.Common.Log;
 using Microsoft.WindowsAzure.Storage.Queue;
 
 namespace Lykke.AzureQueueIntegration.Publisher
 {
+    /// <summary>
+    /// Asynchronously publishes messages to the Azure Storage Queue
+    /// </summary>
+    /// <typeparam name="TModel"></typeparam>
+    [PublicAPI]
     public class AzureQueuePublisher<TModel> : TimerPeriod, IMessageProducer<TModel>
     {
         private readonly AzureQueueSettings _settings;
+        private readonly ILog _log;
         private readonly QueueWithConfirmation<TModel> _queue = new QueueWithConfirmation<TModel>();
-
-        private CloudQueue _cloudQueue;
+        private readonly CloudQueue _cloudQueue;
         private IAzureQueueSerializer<TModel> _serializer;
 
+        [Obsolete("Use ctor with logFactory")]
         public AzureQueuePublisher(string applicationName, AzureQueueSettings settings)
             : base(applicationName, 1000)
         {
             _settings = settings;
             _settings.QueueName = _settings.QueueName.ToLower();
 
+            _cloudQueue = _settings.GetQueueAsync().GetAwaiter().GetResult();
+
             DisableTelemetry();
         }
 
+        [Obsolete("Use ctor with logFactory")]
         public AzureQueuePublisher(
             string applicationName,
             AzureQueueSettings settings,
@@ -32,18 +43,65 @@ namespace Lykke.AzureQueueIntegration.Publisher
             _settings = settings;
             _settings.QueueName = _settings.QueueName.ToLower();
 
+            _cloudQueue = _settings.GetQueueAsync().GetAwaiter().GetResult();
+
             if (disableTelemetry)
                 DisableTelemetry();
         }
 
+        /// <summary>
+        /// Creates instance of the <see cref="AzureQueuePublisher{TModel}"/>
+        /// </summary>
+        /// <param name="logFactory">Log factory</param>
+        /// <param name="serializer">Serializer</param>
+        /// <param name="publisherName">Name of the publisher</param>
+        /// <param name="settings">Queue settings</param>
+        /// <param name="bufferLifetime">Time interval, which indicates how often buffered messages will be published to the queue</param>
+        /// <param name="disableTelemetry">Disables Application Insight telemetry</param>
+        public AzureQueuePublisher(
+            [NotNull] ILogFactory logFactory,
+            [NotNull] IAzureQueueSerializer<TModel> serializer,
+            [NotNull] string publisherName,
+            [NotNull] AzureQueueSettings settings,
+            TimeSpan? bufferLifetime = null,
+            bool disableTelemetry = true)
+            
+            : base(bufferLifetime ?? TimeSpan.FromMilliseconds(100), logFactory, publisherName)
+        {
+            _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+            _settings = settings ?? throw new ArgumentNullException(nameof(settings));
+
+            if (string.IsNullOrWhiteSpace(settings.QueueName))
+            {
+                throw new InvalidOperationException("Queue name should be not empty");
+            }
+
+            _log = logFactory.CreateLog(this, publisherName);
+
+            _settings = new AzureQueueSettings
+            {
+                QueueName = _settings.QueueName.ToLower(),
+                ConnectionString = _settings.ConnectionString
+            };
+
+            _cloudQueue = _settings.GetQueueAsync().GetAwaiter().GetResult();
+
+            if (disableTelemetry)
+            {
+                DisableTelemetry();
+            }
+        }
+
         #region Config
 
+        [Obsolete("Use ctor to set logFactory")]
         public new AzureQueuePublisher<TModel> SetLogger(ILog log)
         {
             base.SetLogger(log);
             return this;
         }
 
+        [Obsolete("Use ctor to set serializer")]
         public AzureQueuePublisher<TModel> SetSerializer(IAzureQueueSerializer<TModel> serializer)
         {
             _serializer = serializer;
@@ -53,10 +111,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
         #endregion
 
         public override async Task Execute()
-        {
-            if (_cloudQueue == null)
-                _cloudQueue = await _settings.GetQueueAsync();
-
+        {          
             QueueWithConfirmation<TModel>.QueueItem message = null;
             try
             {
@@ -76,7 +131,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
             }
             catch (Exception ex)
             {
-                Log?.WriteError(
+                _log?.WriteError(
                     $"{GetComponentName()}:{_settings.QueueName}",
                     message == null || message.Item == null ? string.Empty : message.Item.ToJson(),
                     ex);
