@@ -19,8 +19,7 @@ namespace Lykke.AzureQueueIntegration
             {
                 await checkQueueExistTsk;
             }
-
-            await queue.CreateIfNotExistsAsync();
+            
             return queue;
         }
     }
