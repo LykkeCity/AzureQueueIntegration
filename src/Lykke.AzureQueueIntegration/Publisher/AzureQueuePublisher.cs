@@ -58,13 +58,15 @@ namespace Lykke.AzureQueueIntegration.Publisher
         /// <param name="settings">Queue settings</param>
         /// <param name="bufferLifetime">Time interval, which indicates how often buffered messages will be published to the queue</param>
         /// <param name="disableTelemetry">Disables Application Insight telemetry</param>
+        /// <param name="fireNForgetQueueExistenceCheck">Speed up azure queue existence check</param>
         public AzureQueuePublisher(
             [NotNull] ILogFactory logFactory,
             [NotNull] IAzureQueueSerializer<TModel> serializer,
             [NotNull] string publisherName,
             [NotNull] AzureQueueSettings settings,
             TimeSpan? bufferLifetime = null,
-            bool disableTelemetry = true)
+            bool disableTelemetry = true,
+            bool fireNForgetQueueExistenceCheck = false)
             
             : base(bufferLifetime ?? TimeSpan.FromMilliseconds(100), logFactory, publisherName)
         {
@@ -84,7 +86,7 @@ namespace Lykke.AzureQueueIntegration.Publisher
                 ConnectionString = _settings.ConnectionString
             };
 
-            _cloudQueue = _settings.GetQueueAsync().GetAwaiter().GetResult();
+            _cloudQueue = _settings.GetQueueAsync(fireNForgetQueueExistenceCheck).GetAwaiter().GetResult();
 
             if (disableTelemetry)
             {
